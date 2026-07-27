@@ -1829,16 +1829,28 @@ function showApp(){
   document.getElementById('appRoot').style.display = 'flex';
 }
 
+let gsiRetries = 0;
 function initGoogleSignIn(){
-  if(!window.google || !google.accounts || !google.accounts.id) return;
-  google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback: handleCredentialResponse
-  });
-  google.accounts.id.renderButton(
-    document.getElementById('googleSignInBtn'),
-    { theme:'outline', size:'large', text:'signin_with', shape:'pill' }
-  );
+  if(window.google && google.accounts && google.accounts.id){
+    google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleCredentialResponse
+    });
+    google.accounts.id.renderButton(
+      document.getElementById('googleSignInBtn'),
+      { theme:'outline', size:'large', text:'signin_with', shape:'pill' }
+    );
+    return;
+  }
+  // The GSI script is loaded with async/defer, so it may not be ready yet
+  // on first run — keep retrying briefly instead of silently giving up.
+  gsiRetries++;
+  if(gsiRetries > 100){ // ~20 seconds
+    document.getElementById('googleSignInBtn').innerHTML =
+      '<p class="hint" style="color:var(--danger);">Couldn\'t load Google Sign-In. Check your connection and refresh.</p>';
+    return;
+  }
+  setTimeout(initGoogleSignIn, 200);
 }
 
 async function handleCredentialResponse(response){
