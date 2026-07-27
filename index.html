@@ -1330,10 +1330,7 @@ function renderProducts(){
       <td><span class="stamp ${stampClass}">${stampText}</span></td>
       <td>
         <div class="cell-actions">
-          <button class="btn btn-sm btn-outline" data-action="sell1" data-id="${p.id}" ${p.quantity<1?'disabled':''}>Sell 1</button>
-          <button class="btn btn-sm btn-outline" data-action="sell2" data-id="${p.id}" ${p.quantity<2?'disabled':''}>Sell 2</button>
-          <button class="btn btn-sm btn-outline" data-action="sell5" data-id="${p.id}" ${p.quantity<5?'disabled':''}>Sell 5</button>
-          <button class="btn btn-sm btn-accent" data-action="sellCustom" data-id="${p.id}" ${p.quantity<1?'disabled':''}>Sell…</button>
+          <button class="btn btn-sm btn-accent" data-action="sell" data-id="${p.id}" ${p.quantity<1?'disabled':''}>Sell</button>
           <button class="btn btn-sm btn-outline" data-action="restock" data-id="${p.id}">Restock</button>
           <button class="btn btn-sm btn-ghost" data-action="edit" data-id="${p.id}">Edit</button>
           <button class="btn btn-sm btn-danger" data-action="delete" data-id="${p.id}">Delete</button>
@@ -1540,10 +1537,7 @@ document.getElementById('productsTbody').addEventListener('click', (e) => {
 
   if(action === 'edit') openProductModal(product);
   else if(action === 'delete') confirmDeleteProduct(product);
-  else if(action === 'sell1') sellProduct(product, 1);
-  else if(action === 'sell2') sellProduct(product, 2);
-  else if(action === 'sell5') sellProduct(product, 5);
-  else if(action === 'sellCustom') openQtyModal(product, 'sell');
+  else if(action === 'sell') openQtyModal(product, 'sell');
   else if(action === 'restock') openQtyModal(product, 'restock');
 });
 
@@ -1575,23 +1569,30 @@ async function sellProduct(product, qty){
   }
   const prevQty = product.quantity;
   product.quantity -= qty;
-  await dbPut('products', product);
 
-  const sale = {
-    productId: product.id,
-    productName: product.name,
-    sku: product.sku,
-    qty,
-    unitPrice: product.sellingPrice,
-    date: new Date().toISOString()
-  };
-  const saleId = await dbAdd('sales', sale);
-  sale.id = saleId;
-  state.sales.push(sale);
-  state.saleUndoStack.push({ saleId, productId: product.id, qty, prevQty });
+  try{
+    await dbPut('products', product);
 
-  await logActivity(`Sold ${qty} × "${product.name}" for ${fmtMoney(qty*product.sellingPrice)}`, 'sale');
-  showToast(`Sold ${qty} × ${product.name}.`, 'success');
+    const sale = {
+      productId: product.id,
+      productName: product.name,
+      sku: product.sku,
+      qty,
+      unitPrice: product.sellingPrice,
+      date: new Date().toISOString()
+    };
+    const saleId = await dbAdd('sales', sale);
+    sale.id = saleId;
+    state.sales.push(sale);
+    state.saleUndoStack.push({ saleId, productId: product.id, qty, prevQty });
+
+    await logActivity(`Sold ${qty} × "${product.name}" for ${fmtMoney(qty*product.sellingPrice)}`, 'sale');
+    showToast(`Sold ${qty} × ${product.name}.`, 'success');
+  } catch(err){
+    console.error('Sell failed:', err);
+    product.quantity = prevQty; // roll back the local stock change since the sale didn't actually save
+    showToast(`Sale failed: ${err.message || 'could not save to the database.'}`, 'error');
+  }
   renderAll();
 }
 
@@ -1620,7 +1621,7 @@ function openQtyModal(product, mode){
   state.currentProductId = product.id;
   state.qtyModalMode = mode;
   state.qtyModalValue = 1;
-  document.getElementById('qtyModalTitle').textContent = mode === 'sell' ? 'Sell Custom Quantity' : 'Restock Product';
+  document.getElementById('qtyModalTitle').textContent = mode === 'sell' ? 'Sell Product' : 'Restock Product';
   document.getElementById('qtyModalProductLabel').innerHTML = `<strong>${escapeHtml(product.name)}</strong> · ${escapeHtml(product.sku)}`;
   document.getElementById('qtyStockHint').textContent = mode === 'sell'
     ? `${product.quantity} unit(s) currently in stock`
