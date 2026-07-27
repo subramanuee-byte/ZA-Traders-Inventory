@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ZA Traders — Inventory Management</title>
+<link rel="icon" href="/logo.png" type="image/png">
 
 <!-- Chart.js for dashboard sales chart -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -137,7 +138,9 @@ input,select,textarea{font-family:var(--font-body);}
   color:#fff;font-family:var(--font-display);font-weight:700;font-size:16px;
   flex-shrink:0;
   box-shadow:var(--shadow-s);
+  position:relative;overflow:hidden;
 }
+.brand-mark img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;}
 .brand-text{line-height:1.15;overflow:hidden;}
 .brand-text strong{display:block;font-family:var(--font-display);font-size:15px;font-weight:700;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;}
 .brand-text span{font-size:11px;color:var(--ink-faint);letter-spacing:.04em;text-transform:uppercase;}
@@ -460,7 +463,7 @@ tfoot td{padding:0;}
 <!-- ============ AUTH: SIGN-IN GATE ============ -->
 <div class="auth-gate" id="signInGate">
   <div class="auth-card">
-    <div class="brand-mark">ZA</div>
+    <div class="brand-mark">ZA<img src="/logo.png" alt="" onerror="this.style.display='none'" onload="this.style.display='block';this.previousSibling.textContent=''"></div>
     <h2>ZA Traders</h2>
     <p>Sign in with your Google account to access the inventory system.</p>
     <div class="auth-btn-wrap" id="googleSignInBtn"></div>
@@ -485,7 +488,7 @@ tfoot td{padding:0;}
   <!-- ============ SIDEBAR ============ -->
   <aside class="sidebar" id="sidebar">
     <div class="brand">
-      <div class="brand-mark">ZA</div>
+      <div class="brand-mark">ZA<img src="/logo.png" alt="" onerror="this.style.display='none'" onload="this.style.display='block';this.previousSibling.textContent=''"></div>
       <div class="brand-text">
         <strong id="brandName">ZA Traders</strong>
         <span>Inventory</span>
