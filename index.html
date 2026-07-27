@@ -977,14 +977,18 @@ async function dbAdd(storeName, obj){
 }
 
 async function dbPut(storeName, obj){
+  const key = keyColumn(storeName);
   const row = toRow(storeName, obj);
+  const keyValue = row[key];
+  delete row[key]; // never try to write the primary key column itself — only used to target the row
   const { data, error } = await sbClient
     .from(storeName)
-    .upsert(row, { onConflict: keyColumn(storeName) })
+    .update(row)
+    .eq(key, keyValue)
     .select()
     .single();
   if(error) throw error;
-  return data[keyColumn(storeName)];
+  return data[key];
 }
 
 async function dbDelete(storeName, key){
@@ -1507,19 +1511,25 @@ document.getElementById('saveProductBtn').addEventListener('click', async () => 
     notes: document.getElementById('fNotes').value.trim()
   };
 
-  if(id){
-    productData.id = id;
-    await dbPut('products', productData);
-    const idx = state.products.findIndex(p => String(p.id) === String(productData.id));
-    state.products[idx] = productData;
-    await logActivity(`Edited product "${productData.name}"`, 'edit');
-    showToast('Product updated.', 'success');
-  } else {
-    const newId = await dbAdd('products', productData);
-    productData.id = newId;
-    state.products.push(productData);
-    await logActivity(`Added new product "${productData.name}"`, 'add');
-    showToast('Product added.', 'success');
+  try{
+    if(id){
+      productData.id = id;
+      await dbPut('products', productData);
+      const idx = state.products.findIndex(p => String(p.id) === String(productData.id));
+      state.products[idx] = productData;
+      await logActivity(`Edited product "${productData.name}"`, 'edit');
+      showToast('Product updated.', 'success');
+    } else {
+      const newId = await dbAdd('products', productData);
+      productData.id = newId;
+      state.products.push(productData);
+      await logActivity(`Added new product "${productData.name}"`, 'add');
+      showToast('Product added.', 'success');
+    }
+  } catch(err){
+    console.error('Save product failed:', err);
+    showToast(`Save failed: ${err.message || 'could not save to the database.'}`, 'error');
+    return;
   }
 
   closeModal('productModalOverlay');
@@ -1646,10 +1656,17 @@ document.getElementById('qtyConfirmBtn').addEventListener('click', async () => {
   if(state.qtyModalMode === 'sell'){
     await sellProduct(product, qty);
   } else {
+    const prevQty = product.quantity;
     product.quantity += qty;
-    await dbPut('products', product);
-    await logActivity(`Restocked ${qty} × "${product.name}"`, 'restock');
-    showToast(`Restocked ${qty} × ${product.name}.`, 'success');
+    try{
+      await dbPut('products', product);
+      await logActivity(`Restocked ${qty} × "${product.name}"`, 'restock');
+      showToast(`Restocked ${qty} × ${product.name}.`, 'success');
+    } catch(err){
+      console.error('Restock failed:', err);
+      product.quantity = prevQty;
+      showToast(`Restock failed: ${err.message || 'could not save to the database.'}`, 'error');
+    }
     renderAll();
   }
 });
